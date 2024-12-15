@@ -122,7 +122,6 @@ tasks.test {
     useJUnitPlatform()
 }
 
-/*
 publishMods {
     file = tasks.remapJar.get().archiveFile
     additionalFiles.from(tasks.remapSourcesJar.get().archiveFile)
@@ -153,8 +152,7 @@ publishMods {
         }
     }
 }
-*/
-/*
+
 publishing {
     repositories {
         maven("...") {
@@ -176,4 +174,3 @@ publishing {
         }
     }
 }
-*/

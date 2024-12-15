@@ -11,13 +11,10 @@ stonecutter registerChiseled tasks.register("chiseledBuild", stonecutter.chisele
     ofTask("buildAndCollect")
 }
 
-/*
-// Publishes every version
 stonecutter registerChiseled tasks.register("chiseledPublishMods", stonecutter.chiseled) {
     group = "project"
     ofTask("publishMods")
 }
-*/
 
 stonecutter configureEach {
     swap("mod_version", "\"${property("mod.version")}\";")
