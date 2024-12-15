@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "${id}",
+  "version": "${version}",
+  "name": "${name}",
+  "description": "Library bringing pressure-aware keybindings for analog keyboards to Minecraft.",
+  "authors": [
+    "verotek"
+  ],
+  "contact": {
+    "issues": "https://github.com/lvoegl/libanalog-mc/issues",
+    "sources": "https://github.com/lvoegl/libanalog-mc"
+  },
+  "license": "GPL-2.0-or-later",
+  "icon": "libanalog-128x.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "net.verotek.libanalog.LibAnalog"
+    ]
+  },
+  "mixins": [
+    "libanalog.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.15.0",
+    "minecraft": "${mcdep}",
+    "fabric-api": "*"
+  }
+}
