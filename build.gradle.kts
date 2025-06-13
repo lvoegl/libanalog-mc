@@ -64,6 +64,7 @@ dependencies {
 
 tasks.shadowJar {
     configurations = listOf(project.configurations.shadow.get())
+    exclude("com/sun/jna/**")
 }
 
 tasks.remapJar {
