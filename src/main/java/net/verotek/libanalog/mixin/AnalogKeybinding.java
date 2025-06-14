@@ -98,16 +98,20 @@ public abstract class AnalogKeybinding implements IAnalogKeybinding {
   }
 
   @Intrinsic
-  public synchronized void libanalog$processAnalogEvent(int keyCode, float pressedAmount) {
+  public synchronized void libanalog$processAnalogEvent(int keyCode, float pressedAmount, boolean isInMenu) {
     if (keyCode != boundKey.getCode()) return;
 
-    this.pressedAmount = pressedAmount;
+    this.pressedAmount = isInMenu ? 0.0f : pressedAmount;
 
     if (pressedAmount >= LibAnalog.ACTUATION_POINT) {
       if (pressedAmount - minPressedAmountSincePress >= LibAnalog.MIN_ACTUATION_DELTA) {
         if (!shadowPressed) {
-          setBothPressed(true);
-          incrementTimesPressed();
+          if (isInMenu) {
+            shadowPressed = true;
+          } else {
+            setBothPressed(true);
+            incrementTimesPressed();
+          }
           minPressedAmountSincePress = pressedAmount;
         }
       }

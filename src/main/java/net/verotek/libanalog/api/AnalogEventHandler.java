@@ -39,15 +39,12 @@ public class AnalogEventHandler implements AnalogKeyboardListener {
 
   @Override
   public void keyPressed(AnalogKeyboardDevice keyboard, Set<AnalogKeyState> states) {
-    // TODO this sometimes does not work when screens render longer than expected
-    if (MINECRAFT_CLIENT.currentScreen != null) return;
-
     for (AnalogKeyState state : states) {
       int keyCode = KeyMapper.hidToGlfw(state.key());
       float pressedAmount = state.value();
       for (KeyBinding keyBinding : MINECRAFT_CLIENT.options.allKeys) {
         IAnalogKeybinding analogKeybinding = (IAnalogKeybinding) keyBinding;
-        analogKeybinding.processAnalogEvent(keyCode, pressedAmount);
+        analogKeybinding.processAnalogEvent(keyCode, pressedAmount, MINECRAFT_CLIENT.currentScreen != null);
       }
     }
   }
