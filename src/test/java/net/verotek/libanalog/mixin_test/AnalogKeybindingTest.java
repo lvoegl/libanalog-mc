@@ -51,7 +51,7 @@ class AnalogKeybindingTest {
 
   @Test
   void testPressureAmountResets() throws Exception {
-    analogKeybinding.processAnalogEvent(KeyMapper.hidToGlfw(KEY_BINDING), 1.0f);
+    analogKeybinding.processAnalogEvent(KeyMapper.hidToGlfw(KEY_BINDING), 1.0f, false);
     assume().that(analogKeybinding.pressedAmount()).isNonZero();
 
     Method method = KeyBinding.class.getDeclaredMethod("reset");
@@ -63,35 +63,35 @@ class AnalogKeybindingTest {
 
   @Test
   void testDoesNotAcceptWrongKey() {
-    analogKeybinding.processAnalogEvent(KeyMapper.hidToGlfw(HidKey.B), 1.0f);
+    analogKeybinding.processAnalogEvent(KeyMapper.hidToGlfw(HidKey.B), 1.0f, false);
 
     assertThat(analogKeybinding.pressedAmount()).isNotEqualTo(1.0f);
   }
 
   @Test
   void testCorrectKeyChangesPressedAmount() {
-    analogKeybinding.processAnalogEvent(KeyMapper.hidToGlfw(KEY_BINDING), 1.0f);
+    analogKeybinding.processAnalogEvent(KeyMapper.hidToGlfw(KEY_BINDING), 1.0f, false);
 
     assertThat(analogKeybinding.pressedAmount()).isEqualTo(1.0f);
   }
 
   @Test
   void testCorrectKeyChangesPressed() {
-    analogKeybinding.processAnalogEvent(KeyMapper.hidToGlfw(KEY_BINDING), 1.0f);
+    analogKeybinding.processAnalogEvent(KeyMapper.hidToGlfw(KEY_BINDING), 1.0f, false);
 
     assertThat(keyBinding.isPressed()).isTrue();
   }
 
   @Test
   void testWasPressedForCorrectKey() {
-    analogKeybinding.processAnalogEvent(KeyMapper.hidToGlfw(KEY_BINDING), 1.0f);
+    analogKeybinding.processAnalogEvent(KeyMapper.hidToGlfw(KEY_BINDING), 1.0f, false);
 
     assertThat(keyBinding.wasPressed()).isTrue();
   }
 
   @Test
   void testWasPressedOnlyOnceForCorrectKey() {
-    analogKeybinding.processAnalogEvent(KeyMapper.hidToGlfw(KEY_BINDING), 1.0f);
+    analogKeybinding.processAnalogEvent(KeyMapper.hidToGlfw(KEY_BINDING), 1.0f, false);
 
     assume().that(keyBinding.wasPressed()).isTrue();
 
@@ -100,8 +100,8 @@ class AnalogKeybindingTest {
 
   @Test
   void testSmallChangeDoesNotPressTwice() {
-    analogKeybinding.processAnalogEvent(KeyMapper.hidToGlfw(KEY_BINDING), 0.9f);
-    analogKeybinding.processAnalogEvent(KeyMapper.hidToGlfw(KEY_BINDING), 1.0f);
+    analogKeybinding.processAnalogEvent(KeyMapper.hidToGlfw(KEY_BINDING), 0.9f, false);
+    analogKeybinding.processAnalogEvent(KeyMapper.hidToGlfw(KEY_BINDING), 1.0f, false);
 
     assume().that(keyBinding.wasPressed()).isTrue();
 
@@ -111,7 +111,7 @@ class AnalogKeybindingTest {
   @Test
   void testActuationPointPressesKey() {
     analogKeybinding.processAnalogEvent(
-        KeyMapper.hidToGlfw(KEY_BINDING), LibAnalog.ACTUATION_POINT);
+        KeyMapper.hidToGlfw(KEY_BINDING), LibAnalog.ACTUATION_POINT, false);
 
     assertThat(keyBinding.isPressed()).isTrue();
   }
@@ -119,11 +119,11 @@ class AnalogKeybindingTest {
   @Test
   void testUnderActuationPointDisablesKey() {
     analogKeybinding.processAnalogEvent(
-        KeyMapper.hidToGlfw(KEY_BINDING), LibAnalog.ACTUATION_POINT);
+        KeyMapper.hidToGlfw(KEY_BINDING), LibAnalog.ACTUATION_POINT, false);
     assume().that(keyBinding.isPressed()).isTrue();
 
     analogKeybinding.processAnalogEvent(
-        KeyMapper.hidToGlfw(KEY_BINDING), LibAnalog.ACTUATION_POINT - 0.01f);
+        KeyMapper.hidToGlfw(KEY_BINDING), LibAnalog.ACTUATION_POINT - 0.01f, false);
 
     assertThat(keyBinding.isPressed()).isFalse();
   }
@@ -131,14 +131,14 @@ class AnalogKeybindingTest {
   @Test
   void testSmallLowerChangeAtActuationPointDoesNotPress() {
     analogKeybinding.processAnalogEvent(
-        KeyMapper.hidToGlfw(KEY_BINDING), LibAnalog.ACTUATION_POINT);
+        KeyMapper.hidToGlfw(KEY_BINDING), LibAnalog.ACTUATION_POINT, false);
     analogKeybinding.processAnalogEvent(
         KeyMapper.hidToGlfw(KEY_BINDING),
-        LibAnalog.ACTUATION_POINT - LibAnalog.MIN_ACTUATION_DELTA + 0.0001f);
+        LibAnalog.ACTUATION_POINT - LibAnalog.MIN_ACTUATION_DELTA + 0.0001f, false);
     assume().that(keyBinding.isPressed()).isFalse();
 
     analogKeybinding.processAnalogEvent(
-        KeyMapper.hidToGlfw(KEY_BINDING), LibAnalog.ACTUATION_POINT);
+        KeyMapper.hidToGlfw(KEY_BINDING), LibAnalog.ACTUATION_POINT, false);
 
     assertThat(keyBinding.isPressed()).isFalse();
   }
@@ -147,12 +147,12 @@ class AnalogKeybindingTest {
   void testSmallUpperChangeAtActuationPointDoesNotPress() {
     analogKeybinding.processAnalogEvent(
         KeyMapper.hidToGlfw(KEY_BINDING),
-        LibAnalog.ACTUATION_POINT + LibAnalog.MIN_ACTUATION_DELTA - 0.0001f);
+        LibAnalog.ACTUATION_POINT + LibAnalog.MIN_ACTUATION_DELTA - 0.0001f, false);
     assume().that(keyBinding.isPressed()).isTrue();
 
     analogKeybinding.processAnalogEvent(
         KeyMapper.hidToGlfw(KEY_BINDING),
-        LibAnalog.ACTUATION_POINT - LibAnalog.MIN_ACTUATION_DELTA);
+        LibAnalog.ACTUATION_POINT - LibAnalog.MIN_ACTUATION_DELTA, false);
 
     assertThat(keyBinding.isPressed()).isFalse();
   }
@@ -160,30 +160,30 @@ class AnalogKeybindingTest {
   @Test
   void testLowerActuationDeltaPressesKey() {
     analogKeybinding.processAnalogEvent(
-        KeyMapper.hidToGlfw(KEY_BINDING), LibAnalog.ACTUATION_POINT);
+        KeyMapper.hidToGlfw(KEY_BINDING), LibAnalog.ACTUATION_POINT, false);
     analogKeybinding.processAnalogEvent(
         KeyMapper.hidToGlfw(KEY_BINDING),
-        LibAnalog.ACTUATION_POINT - LibAnalog.MIN_ACTUATION_DELTA + 0.0001f);
+        LibAnalog.ACTUATION_POINT - LibAnalog.MIN_ACTUATION_DELTA + 0.0001f, false);
     assume().that(keyBinding.isPressed()).isFalse();
 
     analogKeybinding.processAnalogEvent(
         KeyMapper.hidToGlfw(KEY_BINDING),
-        LibAnalog.ACTUATION_POINT - LibAnalog.MIN_ACTUATION_DELTA);
+        LibAnalog.ACTUATION_POINT - LibAnalog.MIN_ACTUATION_DELTA, false);
     analogKeybinding.processAnalogEvent(
-        KeyMapper.hidToGlfw(KEY_BINDING), LibAnalog.ACTUATION_POINT);
+        KeyMapper.hidToGlfw(KEY_BINDING), LibAnalog.ACTUATION_POINT, false);
   }
 
   @Test
   void testUpperActuationDeltaPressesKey() {
     analogKeybinding.processAnalogEvent(
-        KeyMapper.hidToGlfw(KEY_BINDING), LibAnalog.ACTUATION_POINT);
+        KeyMapper.hidToGlfw(KEY_BINDING), LibAnalog.ACTUATION_POINT, false);
     analogKeybinding.processAnalogEvent(
-        KeyMapper.hidToGlfw(KEY_BINDING), LibAnalog.ACTUATION_POINT - 0.0001f);
+        KeyMapper.hidToGlfw(KEY_BINDING), LibAnalog.ACTUATION_POINT - 0.0001f, false);
     assume().that(keyBinding.isPressed()).isFalse();
 
     analogKeybinding.processAnalogEvent(
         KeyMapper.hidToGlfw(KEY_BINDING),
-        LibAnalog.ACTUATION_POINT + LibAnalog.MIN_ACTUATION_DELTA);
+        LibAnalog.ACTUATION_POINT + LibAnalog.MIN_ACTUATION_DELTA, false);
 
     assertThat(keyBinding.isPressed()).isTrue();
   }
