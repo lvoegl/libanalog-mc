@@ -2,40 +2,77 @@ package net.verotek.libanalog.mixin_test;
 
 import static com.google.common.truth.Truth.assertThat;
 import static com.google.common.truth.TruthJUnit.assume;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
-import java.lang.reflect.Method;
+import net.minecraft.client.Keyboard;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.KeyBinding;
+import net.minecraft.client.util.Window;
 import net.verotek.libanalog.LibAnalog;
-import net.verotek.libanalog.api.AnalogEventHandler;
 import net.verotek.libanalog.api.KeyMapper;
 import net.verotek.libanalog.interfaces.mixin.IAnalogKeybinding;
+import net.verotek.libanalog.interfaces.mixin.IAnalogKeyboard;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import org.voegl.analogkey4j.event.AnalogKeyState;
+import org.voegl.analogkey4j.event.AnalogKeyboardListener;
 import org.voegl.analogkey4j.key.HidKey;
-import org.voegl.analogkey4j.plugins.AnalogKeyboardDevice;
+import java.lang.reflect.Field;
+import java.util.Set;
 
 class AnalogKeybindingTest {
 
   private static final HidKey KEY_BINDING = HidKey.Space;
+
   private KeyBinding keyBinding;
   private IAnalogKeybinding analogKeybinding;
+  private AnalogKeyboardListener keyboardListener;
+  private static MockedStatic<MinecraftClient> client;
+
+  @BeforeAll
+  static void setupOnce() {
+    client = mockStatic(MinecraftClient.class);
+  }
 
   @BeforeEach
-  void setup() {
+  void setup() throws Exception {
+    MinecraftClient instance = mock(MinecraftClient.class);
+    client.when(MinecraftClient::getInstance).thenReturn(instance);
+    Window window = mock(Window.class);
+    doReturn(window).when(instance).getWindow();
+    Keyboard keyboard = spy(new Keyboard(instance));
+    IAnalogKeyboard analogKeyboard = (IAnalogKeyboard) keyboard;
+    keyboardListener = (AnalogKeyboardListener) analogKeyboard;
+
+    doReturn(true).when(analogKeyboard).usesAnalog();
+    Field keyboardField = MinecraftClient.class.getDeclaredField("keyboard");
+    keyboardField.setAccessible(true);
+    keyboardField.set(instance, (Keyboard) analogKeyboard);
     //? if >=1.21.9 {
-    /*KeyBinding keyBinding = new KeyBinding("Space", KeyMapper.hidToGlfw(KEY_BINDING), KeyBinding.Category.GAMEPLAY);
-    *///?} else {
-    KeyBinding keyBinding = new KeyBinding("Space", KeyMapper.hidToGlfw(KEY_BINDING), "General");
-    //?}
-    IAnalogKeybinding analogKeyBinding = (IAnalogKeybinding) keyBinding;
+    keyBinding = new KeyBinding("Space", KeyMapper.hidToGlfw(KEY_BINDING), KeyBinding.Category.GAMEPLAY);
+    //?} else {
+    /*keyBinding = new KeyBinding("Space", KeyMapper.hidToGlfw(KEY_BINDING), "General");
+    *///?}
+    analogKeybinding = (IAnalogKeybinding) keyBinding;
 
-    AnalogEventHandler.getInstance().keyboardAdded(mock(AnalogKeyboardDevice.class));
-    // assume we have a valid analog key binding
-    assume().that(analogKeyBinding.analogActive()).isTrue();
+    // assume we have a valid analog keyboard
+    assume().that(((IAnalogKeyboard) MinecraftClient.getInstance().keyboard).usesAnalog()).isTrue();
+  }
 
-    this.keyBinding = keyBinding;
-    this.analogKeybinding = analogKeyBinding;
+  @AfterEach
+  void cleanup() {
+    if (keyboardListener != null) {
+      keyboardListener.keyPressed(null, Set.of(new AnalogKeyState(KEY_BINDING, 0.0f)));
+    }
   }
 
   @Test
@@ -54,141 +91,45 @@ class AnalogKeybindingTest {
   }
 
   @Test
-  void testPressureAmountResets() throws Exception {
-    analogKeybinding.processAnalogEvent(KeyMapper.hidToGlfw(KEY_BINDING), 1.0f, false);
-    assume().that(analogKeybinding.pressedAmount()).isNonZero();
-
-    Method method = KeyBinding.class.getDeclaredMethod("reset");
-    method.setAccessible(true);
-    method.invoke(analogKeybinding);
-
-    assertThat(analogKeybinding.pressedAmount()).isZero();
-  }
-
-  @Test
   void testDoesNotAcceptWrongKey() {
-    analogKeybinding.processAnalogEvent(KeyMapper.hidToGlfw(HidKey.B), 1.0f, false);
-
+    keyboardListener.keyPressed(null, Set.of(new AnalogKeyState(HidKey.B, 1.0f)));
     assertThat(analogKeybinding.pressedAmount()).isNotEqualTo(1.0f);
   }
 
   @Test
   void testCorrectKeyChangesPressedAmount() {
-    analogKeybinding.processAnalogEvent(KeyMapper.hidToGlfw(KEY_BINDING), 1.0f, false);
-
+    keyboardListener.keyPressed(null, Set.of(new AnalogKeyState(KEY_BINDING, 1.0f)));
     assertThat(analogKeybinding.pressedAmount()).isEqualTo(1.0f);
   }
 
   @Test
   void testCorrectKeyChangesPressed() {
-    analogKeybinding.processAnalogEvent(KeyMapper.hidToGlfw(KEY_BINDING), 1.0f, false);
-
+    keyboardListener.keyPressed(null, Set.of(new AnalogKeyState(KEY_BINDING, 1.0f)));
     assertThat(keyBinding.isPressed()).isTrue();
   }
 
   @Test
   void testWasPressedForCorrectKey() {
-    analogKeybinding.processAnalogEvent(KeyMapper.hidToGlfw(KEY_BINDING), 1.0f, false);
-
-    assertThat(keyBinding.wasPressed()).isTrue();
+    keyboardListener.keyPressed(null, Set.of(new AnalogKeyState(KEY_BINDING, 1.0f)));
+    verify(MinecraftClient.getInstance()).execute(any(Runnable.class));
   }
 
   @Test
   void testWasPressedOnlyOnceForCorrectKey() {
-    analogKeybinding.processAnalogEvent(KeyMapper.hidToGlfw(KEY_BINDING), 1.0f, false);
-
-    assume().that(keyBinding.wasPressed()).isTrue();
-
-    assertThat(keyBinding.wasPressed()).isFalse();
+    keyboardListener.keyPressed(null, Set.of(new AnalogKeyState(KEY_BINDING, 1.0f)));
+    verify(MinecraftClient.getInstance(), times(1)).execute(any(Runnable.class));
   }
 
   @Test
   void testSmallChangeDoesNotPressTwice() {
-    analogKeybinding.processAnalogEvent(KeyMapper.hidToGlfw(KEY_BINDING), 0.9f, false);
-    analogKeybinding.processAnalogEvent(KeyMapper.hidToGlfw(KEY_BINDING), 1.0f, false);
-
-    assume().that(keyBinding.wasPressed()).isTrue();
-
-    assertThat(keyBinding.wasPressed()).isFalse();
+    keyboardListener.keyPressed(null, Set.of(new AnalogKeyState(KEY_BINDING, LibAnalog.ACTUATION_POINT)));
+    keyboardListener.keyPressed(null, Set.of(new AnalogKeyState(KEY_BINDING, 1.0f)));
+    verify(MinecraftClient.getInstance(), times(1)).execute(any(Runnable.class));
   }
 
   @Test
   void testActuationPointPressesKey() {
-    analogKeybinding.processAnalogEvent(
-        KeyMapper.hidToGlfw(KEY_BINDING), LibAnalog.ACTUATION_POINT, false);
-
-    assertThat(keyBinding.isPressed()).isTrue();
-  }
-
-  @Test
-  void testUnderActuationPointDisablesKey() {
-    analogKeybinding.processAnalogEvent(
-        KeyMapper.hidToGlfw(KEY_BINDING), LibAnalog.ACTUATION_POINT, false);
-    assume().that(keyBinding.isPressed()).isTrue();
-
-    analogKeybinding.processAnalogEvent(
-        KeyMapper.hidToGlfw(KEY_BINDING), LibAnalog.ACTUATION_POINT - 0.01f, false);
-
-    assertThat(keyBinding.isPressed()).isFalse();
-  }
-
-  @Test
-  void testSmallLowerChangeAtActuationPointDoesNotPress() {
-    analogKeybinding.processAnalogEvent(
-        KeyMapper.hidToGlfw(KEY_BINDING), LibAnalog.ACTUATION_POINT, false);
-    analogKeybinding.processAnalogEvent(
-        KeyMapper.hidToGlfw(KEY_BINDING),
-        LibAnalog.ACTUATION_POINT - LibAnalog.MIN_ACTUATION_DELTA + 0.0001f, false);
-    assume().that(keyBinding.isPressed()).isFalse();
-
-    analogKeybinding.processAnalogEvent(
-        KeyMapper.hidToGlfw(KEY_BINDING), LibAnalog.ACTUATION_POINT, false);
-
-    assertThat(keyBinding.isPressed()).isFalse();
-  }
-
-  @Test
-  void testSmallUpperChangeAtActuationPointDoesNotPress() {
-    analogKeybinding.processAnalogEvent(
-        KeyMapper.hidToGlfw(KEY_BINDING),
-        LibAnalog.ACTUATION_POINT + LibAnalog.MIN_ACTUATION_DELTA - 0.0001f, false);
-    assume().that(keyBinding.isPressed()).isTrue();
-
-    analogKeybinding.processAnalogEvent(
-        KeyMapper.hidToGlfw(KEY_BINDING),
-        LibAnalog.ACTUATION_POINT - LibAnalog.MIN_ACTUATION_DELTA, false);
-
-    assertThat(keyBinding.isPressed()).isFalse();
-  }
-
-  @Test
-  void testLowerActuationDeltaPressesKey() {
-    analogKeybinding.processAnalogEvent(
-        KeyMapper.hidToGlfw(KEY_BINDING), LibAnalog.ACTUATION_POINT, false);
-    analogKeybinding.processAnalogEvent(
-        KeyMapper.hidToGlfw(KEY_BINDING),
-        LibAnalog.ACTUATION_POINT - LibAnalog.MIN_ACTUATION_DELTA + 0.0001f, false);
-    assume().that(keyBinding.isPressed()).isFalse();
-
-    analogKeybinding.processAnalogEvent(
-        KeyMapper.hidToGlfw(KEY_BINDING),
-        LibAnalog.ACTUATION_POINT - LibAnalog.MIN_ACTUATION_DELTA, false);
-    analogKeybinding.processAnalogEvent(
-        KeyMapper.hidToGlfw(KEY_BINDING), LibAnalog.ACTUATION_POINT, false);
-  }
-
-  @Test
-  void testUpperActuationDeltaPressesKey() {
-    analogKeybinding.processAnalogEvent(
-        KeyMapper.hidToGlfw(KEY_BINDING), LibAnalog.ACTUATION_POINT, false);
-    analogKeybinding.processAnalogEvent(
-        KeyMapper.hidToGlfw(KEY_BINDING), LibAnalog.ACTUATION_POINT - 0.0001f, false);
-    assume().that(keyBinding.isPressed()).isFalse();
-
-    analogKeybinding.processAnalogEvent(
-        KeyMapper.hidToGlfw(KEY_BINDING),
-        LibAnalog.ACTUATION_POINT + LibAnalog.MIN_ACTUATION_DELTA, false);
-
-    assertThat(keyBinding.isPressed()).isTrue();
+    keyboardListener.keyPressed(null, Set.of(new AnalogKeyState(KEY_BINDING, LibAnalog.ACTUATION_POINT)));
+    verify(MinecraftClient.getInstance(), times(1)).execute(any(Runnable.class));
   }
 }

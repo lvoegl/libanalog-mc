@@ -1,174 +1,44 @@
 package net.verotek.libanalog.mixin;
 
-//? if >=1.21.9 {
-/*import java.util.List;
-*///?}
-import java.util.Map;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
-import net.verotek.libanalog.LibAnalog;
-import net.verotek.libanalog.api.AnalogEventHandler;
-import net.verotek.libanalog.api.KeyMapper;
+import net.verotek.libanalog.api.AnalogKeyStates;
 import net.verotek.libanalog.interfaces.mixin.IAnalogKeybinding;
-import org.spongepowered.asm.mixin.Final;
+import net.verotek.libanalog.interfaces.mixin.IAnalogKeyboard;
 import org.spongepowered.asm.mixin.Implements;
 import org.spongepowered.asm.mixin.Interface;
 import org.spongepowered.asm.mixin.Intrinsic;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.Unique;
-import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Implements(@Interface(iface = IAnalogKeybinding.class, prefix = "libanalog$"))
 @Mixin(KeyBinding.class)
 public abstract class AnalogKeybinding implements IAnalogKeybinding {
 
-  @Shadow private InputUtil.Key boundKey;
   @Shadow private boolean pressed;
-  //? if >=1.21.9 {
-  /*@Shadow @Final private static Map<InputUtil.Key, List<KeyBinding>> KEY_TO_BINDINGS;
-  *///?} else {
-  @Shadow @Final private static Map<InputUtil.Key, KeyBinding> KEY_TO_BINDINGS;
-  //?}
-
-  @Shadow
-  public abstract void setPressed(boolean pressed);
-
-  @Shadow private int timesPressed;
-  @Unique private float pressedAmount = 0.0f;
-  @Unique private float minPressedAmountSincePress = 1.0f;
-  @Unique private boolean shadowPressed = false;
-  @Unique private boolean keySupported = false;
-  @Unique private static final AnalogEventHandler HANDLER = AnalogEventHandler.getInstance();
-
-  @Unique private void checkSupported() {
-    keySupported = KeyMapper.glfwToHid(boundKey.getCode()) != null;
-  }
-
-  @Unique private boolean useAnalog() {
-    return HANDLER.canUseAnalog();
-  }
-
-  @Inject(method = "<init>*", at = @At("RETURN"))
-  private void afterInit(CallbackInfo ci) {
-    checkSupported();
-  }
-
-  @Inject(method = "setBoundKey", at = @At("RETURN"))
-  private void afterSetKeycode(CallbackInfo ci) {
-    checkSupported();
-  }
-
-  @Inject(method = "reset", at = @At("RETURN"))
-  private void reset(CallbackInfo ci) {
-    pressedAmount = 0.0f;
-  }
+  @Shadow protected InputUtil.Key boundKey;
 
   /**
    * @author lvoegl
-   * @reason Provides compatability with non-analog keyboards without interfering with analog
-   *     events.
+   * @reason Computes isPressed based on analog value.
    */
   @Overwrite
-  public static void onKeyPressed(InputUtil.Key key) {
-    //? if >=1.21.9 {
-    /*List<KeyBinding> keyBindings = KEY_TO_BINDINGS.get(key);
-    if (keyBindings == null) return;
-    *///?} else {
-    KeyBinding keyBinding = KEY_TO_BINDINGS.get(key);
-    //?}
-
-    //? if >=1.21.9 {
-    /*for (KeyBinding keyBinding : keyBindings) {
-    *///?}
-      if (keyBinding != null) {
-        IAnalogKeybinding analogKeybinding = (IAnalogKeybinding) keyBinding;
-        if (!analogKeybinding.analogActive()) {
-          analogKeybinding.incrementTimesPressed();
-        }
-      }
-    //? if >=1.21.9 {
-    /*}
-    *///?}
-  }
-
-  /**
-   * @author lvoegl
-   * @reason Provides compatability with non-analog keyboards without interfering with analog
-   *     events.
-   */
-  @Overwrite
-  public static void setKeyPressed(InputUtil.Key key, boolean pressed) {
-    //? if >=1.21.9 {
-    /*List<KeyBinding> keyBindings = KEY_TO_BINDINGS.get(key);
-    if (keyBindings == null) return;
-    *///?} else {
-    KeyBinding keyBinding = KEY_TO_BINDINGS.get(key);
-    //?}
-
-    //? if >=1.21.9 {
-    /*for (KeyBinding keyBinding : keyBindings) {
-    *///?}
-      if (keyBinding != null) {
-        IAnalogKeybinding analogKeybinding = (IAnalogKeybinding) keyBinding;
-        if (!analogKeybinding.analogActive()) {
-          keyBinding.setPressed(pressed);
-        }
-      }
-    //? if >=1.21.9 {
-    /*}
-    *///?}
-  }
-
-  @Unique private void setBothPressed(boolean pressed) {
-    shadowPressed = pressed;
-    setPressed(pressed);
-  }
-
-  @Intrinsic
-  public synchronized void libanalog$processAnalogEvent(int keyCode, float pressedAmount, boolean isInMenu) {
-    if (keyCode != boundKey.getCode()) return;
-
-    this.pressedAmount = isInMenu ? 0.0f : pressedAmount;
-
-    if (pressedAmount >= LibAnalog.ACTUATION_POINT) {
-      if (pressedAmount - minPressedAmountSincePress >= LibAnalog.MIN_ACTUATION_DELTA) {
-        if (!shadowPressed) {
-          if (isInMenu) {
-            shadowPressed = true;
-          } else {
-            setBothPressed(true);
-            incrementTimesPressed();
-          }
-          minPressedAmountSincePress = pressedAmount;
-        }
-      }
-    } else {
-      setBothPressed(false);
-      if (pressedAmount < minPressedAmountSincePress) {
-        minPressedAmountSincePress = pressedAmount;
-      }
+  public boolean isPressed() {
+    IAnalogKeyboard analogKeyboard = (IAnalogKeyboard) MinecraftClient.getInstance().keyboard;
+    if (!analogKeyboard.usesAnalog()) {
+      return pressed;
     }
+    return AnalogKeyStates.isPressed(this.boundKey);
   }
 
   @Intrinsic
   public float libanalog$pressedAmount() {
-    if (!analogActive()) {
+    IAnalogKeyboard analogKeyboard = (IAnalogKeyboard) MinecraftClient.getInstance().keyboard;
+    if (!analogKeyboard.usesAnalog()) {
       return pressed ? 1.0f : 0.0f;
     }
-    return pressedAmount;
-  }
-
-  @Intrinsic
-  public void libanalog$incrementTimesPressed() {
-    timesPressed++;
-  }
-
-  @Intrinsic
-  public boolean libanalog$analogActive() {
-    return useAnalog() && keySupported;
+    return AnalogKeyStates.get(this.boundKey);
   }
 }
