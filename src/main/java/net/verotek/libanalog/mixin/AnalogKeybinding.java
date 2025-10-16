@@ -1,5 +1,8 @@
 package net.verotek.libanalog.mixin;
 
+//? if >=1.21.9 {
+/*import java.util.List;
+*///?}
 import java.util.Map;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
@@ -25,7 +28,11 @@ public abstract class AnalogKeybinding implements IAnalogKeybinding {
 
   @Shadow private InputUtil.Key boundKey;
   @Shadow private boolean pressed;
+  //? if >=1.21.9 {
+  /*@Shadow @Final private static Map<InputUtil.Key, List<KeyBinding>> KEY_TO_BINDINGS;
+  *///?} else {
   @Shadow @Final private static Map<InputUtil.Key, KeyBinding> KEY_TO_BINDINGS;
+  //?}
 
   @Shadow
   public abstract void setPressed(boolean pressed);
@@ -67,13 +74,25 @@ public abstract class AnalogKeybinding implements IAnalogKeybinding {
    */
   @Overwrite
   public static void onKeyPressed(InputUtil.Key key) {
+    //? if >=1.21.9 {
+    /*List<KeyBinding> keyBindings = KEY_TO_BINDINGS.get(key);
+    if (keyBindings == null) return;
+    *///?} else {
     KeyBinding keyBinding = KEY_TO_BINDINGS.get(key);
-    if (keyBinding != null) {
-      IAnalogKeybinding analogKeybinding = (IAnalogKeybinding) keyBinding;
-      if (!analogKeybinding.analogActive()) {
-        analogKeybinding.incrementTimesPressed();
+    //?}
+
+    //? if >=1.21.9 {
+    /*for (KeyBinding keyBinding : keyBindings) {
+    *///?}
+      if (keyBinding != null) {
+        IAnalogKeybinding analogKeybinding = (IAnalogKeybinding) keyBinding;
+        if (!analogKeybinding.analogActive()) {
+          analogKeybinding.incrementTimesPressed();
+        }
       }
-    }
+    //? if >=1.21.9 {
+    /*}
+    *///?}
   }
 
   /**
@@ -83,13 +102,25 @@ public abstract class AnalogKeybinding implements IAnalogKeybinding {
    */
   @Overwrite
   public static void setKeyPressed(InputUtil.Key key, boolean pressed) {
+    //? if >=1.21.9 {
+    /*List<KeyBinding> keyBindings = KEY_TO_BINDINGS.get(key);
+    if (keyBindings == null) return;
+    *///?} else {
     KeyBinding keyBinding = KEY_TO_BINDINGS.get(key);
-    if (keyBinding != null) {
-      IAnalogKeybinding analogKeybinding = (IAnalogKeybinding) keyBinding;
-      if (!analogKeybinding.analogActive()) {
-        keyBinding.setPressed(pressed);
+    //?}
+
+    //? if >=1.21.9 {
+    /*for (KeyBinding keyBinding : keyBindings) {
+    *///?}
+      if (keyBinding != null) {
+        IAnalogKeybinding analogKeybinding = (IAnalogKeybinding) keyBinding;
+        if (!analogKeybinding.analogActive()) {
+          keyBinding.setPressed(pressed);
+        }
       }
-    }
+    //? if >=1.21.9 {
+    /*}
+    *///?}
   }
 
   @Unique private void setBothPressed(boolean pressed) {

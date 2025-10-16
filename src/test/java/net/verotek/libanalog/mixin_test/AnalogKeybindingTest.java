@@ -23,7 +23,11 @@ class AnalogKeybindingTest {
 
   @BeforeEach
   void setup() {
+    //? if >=1.21.9 {
+    /*KeyBinding keyBinding = new KeyBinding("Space", KeyMapper.hidToGlfw(KEY_BINDING), KeyBinding.Category.GAMEPLAY);
+    *///?} else {
     KeyBinding keyBinding = new KeyBinding("Space", KeyMapper.hidToGlfw(KEY_BINDING), "General");
+    //?}
     IAnalogKeybinding analogKeyBinding = (IAnalogKeybinding) keyBinding;
 
     AnalogEventHandler.getInstance().keyboardAdded(mock(AnalogKeyboardDevice.class));
