@@ -111,6 +111,8 @@ public abstract class AnalogKeyboard implements AnalogKeyboardListener, IAnalogK
 
   @Override
   public void keyPressed(AnalogKeyboardDevice keyboard, Set<AnalogKeyState> states) {
+    if (!MinecraftClient.getInstance().isWindowFocused()) return;
+
     for (AnalogKeyState state : states) {
       int keyCode = KeyMapper.hidToGlfw(state.key());
       long handle = this.client.getWindow().getHandle();
