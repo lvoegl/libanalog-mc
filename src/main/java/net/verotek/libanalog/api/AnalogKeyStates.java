@@ -9,7 +9,8 @@ public final class AnalogKeyStates {
 
   private static final ConcurrentHashMap<InputUtil.Key, FloatHolder> AMOUNTS = new ConcurrentHashMap<>(64);
 
-  private AnalogKeyStates() {}
+  private AnalogKeyStates() {
+  }
 
   public static void set(InputUtil.Key key, float amount) {
     FloatHolder h = AMOUNTS.get(key);

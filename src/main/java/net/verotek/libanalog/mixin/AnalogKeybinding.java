@@ -17,8 +17,10 @@ import org.spongepowered.asm.mixin.Shadow;
 @Mixin(KeyBinding.class)
 public abstract class AnalogKeybinding implements IAnalogKeybinding {
 
-  @Shadow private boolean pressed;
-  @Shadow protected InputUtil.Key boundKey;
+  @Shadow
+  private boolean pressed;
+  @Shadow
+  protected InputUtil.Key boundKey;
 
   /**
    * @author lvoegl

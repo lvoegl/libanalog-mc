@@ -31,6 +31,7 @@ import org.voegl.analogkey4j.event.AnalogKeyboardListener;
 import org.voegl.analogkey4j.plugins.AnalogKeyboardDevice;
 import static org.lwjgl.glfw.GLFW.GLFW_PRESS;
 import static org.lwjgl.glfw.GLFW.GLFW_RELEASE;
+import static org.lwjgl.glfw.GLFW.GLFW_REPEAT;
 
 import static org.lwjgl.glfw.GLFW.glfwGetKeyScancode;
 
@@ -38,15 +39,30 @@ import static org.lwjgl.glfw.GLFW.glfwGetKeyScancode;
 @Mixin(Keyboard.class)
 public abstract class AnalogKeyboard implements AnalogKeyboardListener, IAnalogKeyboard {
 
-  @Final @Shadow private MinecraftClient client;
-  @Unique private final AnalogKeyboardManager libanalog$manager = new AnalogKeyboardManager();
-  @Unique private AnalogKeyboardDevice libanalog$keyboard;
+  @Final
+  @Shadow
+  private MinecraftClient client;
+  @Unique
+  private final AnalogKeyboardManager libanalog$manager = new AnalogKeyboardManager();
+  @Unique
+  private AnalogKeyboardDevice libanalog$keyboard;
+
   //? if >=1.21.9 {
-  @Shadow private void onKey(long window, int action, KeyInput input) {}
-  @Shadow private void onChar(long window, CharInput input) {}
+  @Shadow
+  private void onKey(long window, int action, KeyInput input) {
+  }
+
+  @Shadow
+  private void onChar(long window, CharInput input) {
+  }
   //?} else {
-  /*@Shadow public void onKey(long window, int key, int scancode, int action, int modifiers) {}
-  @Shadow private void onChar(long window, int codePoint, int modifiers) {}
+  /*@Shadow
+  public void onKey(long window, int key, int scancode, int action, int modifiers) {
+  }
+
+  @Shadow
+  private void onChar(long window, int codePoint, int modifiers) {
+  }
   *///?}
 
   @Inject(method = "<init>", at = @At("TAIL"))
@@ -60,10 +76,11 @@ public abstract class AnalogKeyboard implements AnalogKeyboardListener, IAnalogK
 
   /**
    * @author lvoegl
-   * @reason Sets up analog keyboard manager and falls back to default keyboard if unavailable.
+   * @reason Sets up analog keyboard manager and falls back to default keyboard if
+   *         unavailable.
    */
   @Overwrite
-  public void setup(/*? if >=1.21.9 {*/ Window /*?} else {*/ /*long *//*?}*/ window) {
+  public void setup(/*? if >=1.21.9 {*/ Window /*?} else {*/ /*long*//*?}*/ window) {
     LibAnalog.LOGGER.info("Initializing analog keyboard handler");
     libanalog$manager.start();
 
@@ -140,7 +157,8 @@ public abstract class AnalogKeyboard implements AnalogKeyboardListener, IAnalogK
   }
 
   @Override
-  public void keyboardClosed(AnalogKeyboardDevice keyboard) {}
+  public void keyboardClosed(AnalogKeyboardDevice keyboard) {
+  }
 
   @Override
   public void keyboardError(AnalogKeyboardDevice keyboard, String message) {
@@ -148,7 +166,8 @@ public abstract class AnalogKeyboard implements AnalogKeyboardListener, IAnalogK
   }
 
   @Override
-  public void keyboardOpened(AnalogKeyboardDevice keyboard) {}
+  public void keyboardOpened(AnalogKeyboardDevice keyboard) {
+  }
 
   @Override
   public void keyboardRemoved(AnalogKeyboardDevice keyboard) {
