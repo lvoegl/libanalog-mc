@@ -12,6 +12,7 @@ import org.spongepowered.asm.mixin.Intrinsic;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 
 @Implements(@Interface(iface = IAnalogKeybinding.class, prefix = "libanalog$"))
 @Mixin(KeyBinding.class)
@@ -22,14 +23,19 @@ public abstract class AnalogKeybinding implements IAnalogKeybinding {
   @Shadow
   /*? if >=1.21.9 {*/ protected /*?} else {*/ /*private *//*?}*/ InputUtil.Key boundKey;
 
+  @Unique
+  private boolean isAnalog() {
+    IAnalogKeyboard analogKeyboard = (IAnalogKeyboard) MinecraftClient.getInstance().keyboard;
+    return analogKeyboard.usesAnalog() && this.boundKey.getCategory() == InputUtil.Type.KEYSYM;
+  }
+
   /**
    * @author lvoegl
    * @reason Computes isPressed based on analog value.
    */
   @Overwrite
   public boolean isPressed() {
-    IAnalogKeyboard analogKeyboard = (IAnalogKeyboard) MinecraftClient.getInstance().keyboard;
-    if (!analogKeyboard.usesAnalog()) {
+    if (!isAnalog()) {
       return pressed;
     }
     return AnalogKeyStates.isPressed(this.boundKey);
@@ -37,8 +43,7 @@ public abstract class AnalogKeybinding implements IAnalogKeybinding {
 
   @Intrinsic
   public float libanalog$pressedAmount() {
-    IAnalogKeyboard analogKeyboard = (IAnalogKeyboard) MinecraftClient.getInstance().keyboard;
-    if (!analogKeyboard.usesAnalog()) {
+    if (!isAnalog()) {
       return pressed ? 1.0f : 0.0f;
     }
     return AnalogKeyStates.get(this.boundKey);
