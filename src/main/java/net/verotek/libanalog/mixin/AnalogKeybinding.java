@@ -20,7 +20,7 @@ public abstract class AnalogKeybinding implements IAnalogKeybinding {
   @Shadow
   private boolean pressed;
   @Shadow
-  protected InputUtil.Key boundKey;
+  /*? if >=1.21.9 {*/ protected /*?} else {*/ /*private *//*?}*/ InputUtil.Key boundKey;
 
   /**
    * @author lvoegl
