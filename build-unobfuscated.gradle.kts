@@ -1,29 +1,16 @@
 plugins {
-    id("maven-publish")
-    id("fabric-loom")
+    id("net.fabricmc.fabric-loom") version "1.15-SNAPSHOT"
+    id("com.gradleup.shadow")
     id("me.modmuss50.mod-publish-plugin")
-    id("com.github.johnrengelman.shadow")
+    `maven-publish`
 }
 
-class ModData {
-    val id = property("mod.id").toString()
-    val name = property("mod.name").toString()
-    val version = property("mod.version").toString()
-    val group = property("mod.group").toString()
-}
+val minecraft = stonecutter.current.version
+val loader = stonecutter.current.project.substringAfterLast('-')
 
-class ModDependencies {
-    operator fun get(name: String) = property("deps.$name").toString()
-}
-
-val mod = ModData()
-val deps = ModDependencies()
-val mcVersion = stonecutter.current.version
-val mcDep = property("mod.mc_dep").toString()
-
-version = "${mod.version}+$mcVersion"
+version = "${mod.version}+$minecraft"
 group = mod.group
-base { archivesName.set(mod.id) }
+base { archivesName.set("${mod.id}-$loader") }
 
 repositories {
     fun strictMaven(url: String, alias: String, vararg groups: String) = exclusiveContent {
@@ -45,21 +32,16 @@ repositories {
 configurations.implementation.get().extendsFrom(configurations["shadow"])
 
 dependencies {
-    fun fapi(vararg modules: String) = modules.forEach {
-        modImplementation(fabricApi.module(it, deps["fabric_api"]))
-    }
-
-    testImplementation("net.fabricmc:fabric-loader-junit:${deps["fabric_loader"]}")
-    testImplementation("org.mockito:mockito-core:5.14.2")
+    testImplementation("net.fabricmc:fabric-loader-junit:${mod.dep("fabric_loader")}")
+    testImplementation("org.mockito:mockito-core:5.23.0")
     testImplementation("com.google.truth:truth:1.4.4")
 
-    shadow("org.voegl.analogkey4j:analogkey4j:${deps["analogkey"]}")
-    minecraft("com.mojang:minecraft:$mcVersion")
-    mappings("net.fabricmc:yarn:$mcVersion+build.${deps["yarn_build"]}:v2")
-    modImplementation("net.fabricmc:fabric-loader:${deps["fabric_loader"]}")
-    modImplementation("net.fabricmc.fabric-api:fabric-api:${deps["fabric_api"]}")
-
-    fapi("fabric-lifecycle-events-v1")
+    shadow("org.voegl.analogkey4j:analogkey4j:${mod.dep("analogkey")}")
+    minecraft("com.mojang:minecraft:$minecraft")
+    if (loader == "fabric") {
+        implementation("net.fabricmc:fabric-loader:${mod.dep("fabric_loader")}")
+        implementation("net.fabricmc.fabric-api:fabric-api:${mod.dep("fabric_api")}")
+    }
 }
 
 tasks.shadowJar {
@@ -67,12 +49,8 @@ tasks.shadowJar {
     exclude("com/sun/jna/**")
 }
 
-tasks.remapJar {
-    dependsOn(tasks.shadowJar)
-    inputFile.set(tasks.shadowJar.get().archiveFile)
-    doLast {
-        tasks.shadowJar.get().archiveFile.get().asFile.delete()
-    }
+tasks.jar {
+    archiveClassifier = "slim"
 }
 
 loom {
@@ -81,42 +59,37 @@ loom {
             options.put("mark-corresponding-synthetics", "1")
         }
     }
+}
 
-    runConfigs.all {
-        ideConfigGenerated(true)
-        vmArgs("-Dmixin.debug.export=true")
-        runDir = "../../run"
-    }
+val requiredJava = when {
+    sc.current.parsed >= "26.1-pre-1" -> JavaVersion.VERSION_25
+    sc.current.parsed >= "1.20.5" -> JavaVersion.VERSION_21
+    sc.current.parsed >= "1.18" -> JavaVersion.VERSION_17
+    sc.current.parsed >= "1.17" -> JavaVersion.VERSION_16
+    else -> JavaVersion.VERSION_1_8
 }
 
 java {
     withSourcesJar()
-    val java = if (stonecutter.eval(mcVersion, ">=1.20.6")) JavaVersion.VERSION_21 else JavaVersion.VERSION_17
-    targetCompatibility = java
-    sourceCompatibility = java
+    targetCompatibility = requiredJava
+    sourceCompatibility = requiredJava
 }
 
 tasks.processResources {
-    inputs.property("id", mod.id)
-    inputs.property("name", mod.name)
-    inputs.property("version", mod.version)
-    inputs.property("mcdep", mcDep)
-
-    val map = mapOf(
+    properties(
+        listOf("fabric.mod.json"),
         "id" to mod.id,
         "name" to mod.name,
         "version" to mod.version,
-        "mcdep" to mcDep
+        "minecraft" to mod.prop("mc_dep_fabric")
     )
-
-    filesMatching("fabric.mod.json") { expand(map) }
 }
 
 tasks.register<Copy>("buildAndCollect") {
     group = "build"
-    from(tasks.remapJar.get().archiveFile)
+    from(tasks.shadowJar.flatMap { it.archiveFile })
     into(rootProject.layout.buildDirectory.file("libs/${mod.version}"))
-    dependsOn("build")
+    dependsOn(tasks.shadowJar)
 }
 
 tasks.test {
@@ -124,9 +97,8 @@ tasks.test {
 }
 
 publishMods {
-    file = tasks.remapJar.get().archiveFile
-    additionalFiles.from(tasks.remapSourcesJar.get().archiveFile)
-    displayName = "${mod.name} ${mod.version} for $mcVersion"
+    file = tasks.shadowJar.get().archiveFile
+    displayName = "${mod.name} ${mod.version} for $minecraft"
     version = mod.version
     changelog = rootProject.file("CHANGELOG.md").readText()
     type = STABLE
@@ -138,7 +110,7 @@ publishMods {
     modrinth {
         projectId = property("publish.modrinth").toString()
         accessToken = providers.environmentVariable("MODRINTH_TOKEN")
-        minecraftVersions.add(mcVersion)
+        minecraftVersions.add(minecraft)
         requires {
             slug = "fabric-api"
         }
@@ -147,9 +119,9 @@ publishMods {
     curseforge {
         projectId = property("publish.curseforge").toString()
         accessToken = providers.environmentVariable("CURSEFORGE_TOKEN")
-        minecraftVersions.add(mcVersion)
-        requires {
-            slug = "fabric-api"
+        minecraftVersions.add(minecraft)
+        if (loader == "fabric") {
+            requires("fabric-api")
         }
     }
 }
@@ -169,7 +141,7 @@ publishing {
         create<MavenPublication>("mavenJava") {
             groupId = "${property("mod.group")}.${mod.id}"
             artifactId = mod.version
-            version = mcVersion
+            version = "${project.version}-$loader"
 
             from(components["java"])
         }

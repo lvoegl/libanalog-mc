@@ -1,23 +1,13 @@
 plugins {
     id("dev.kikugie.stonecutter")
-    id("fabric-loom") version "1.11-SNAPSHOT" apply false
-    id("me.modmuss50.mod-publish-plugin") version "0.8.1" apply false
-    id("com.github.johnrengelman.shadow") version "8.1.1" apply false
+    id("me.modmuss50.mod-publish-plugin") version "1.1.0" apply false
+    id("com.gradleup.shadow") version "9.4.1" apply false
 }
-stonecutter active "1.21.9" /* [SC] DO NOT EDIT */
+stonecutter active "26.1-fabric" /* [SC] DO NOT EDIT */
 
-stonecutter registerChiseled tasks.register("chiseledBuild", stonecutter.chiseled) {
-    group = "project"
-    ofTask("buildAndCollect")
-}
-
-stonecutter registerChiseled tasks.register("chiseledPublishMods", stonecutter.chiseled) {
-    group = "project"
-    ofTask("publishMods")
-}
-
-stonecutter configureEach {
-    swap("mod_version", "\"${property("mod.version")}\";")
-    const("release", property("mod.id") != "template")
-    dependency("fapi", project.property("deps.fabric_api").toString())
+stonecutter parameters {
+    swaps["mod_version"] = "\"" + property("mod.version") + "\";"
+    swaps["minecraft"] = "\"" + node.metadata.version + "\";"
+    constants["release"] = property("mod.id") != "template"
+    dependencies["fapi"] = node.project.property("deps.fabric_api") as String
 }

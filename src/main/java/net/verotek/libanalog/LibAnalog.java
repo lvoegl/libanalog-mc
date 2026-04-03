@@ -13,6 +13,5 @@ public final class LibAnalog implements ClientModInitializer {
   public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
   @Override
-  public void onInitializeClient() {
-  }
+  public void onInitializeClient() {}
 }

@@ -9,11 +9,12 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
-import net.minecraft.client.Keyboard;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.option.KeyBinding;
-import net.minecraft.client.util.Window;
+import com.mojang.blaze3d.platform.Window;
+import net.minecraft.client.KeyMapping;
+import net.minecraft.client.KeyboardHandler;
+import net.minecraft.client.Minecraft;
 import net.verotek.libanalog.LibAnalog;
 import net.verotek.libanalog.api.KeyMapper;
 import net.verotek.libanalog.interfaces.mixin.IAnalogKeybinding;
@@ -33,39 +34,40 @@ class AnalogKeybindingTest {
 
   private static final HidKey KEY_BINDING = HidKey.Space;
 
-  private KeyBinding keyBinding;
+  private KeyMapping keyBinding;
   private IAnalogKeybinding analogKeybinding;
   private AnalogKeyboardListener keyboardListener;
-  private static MockedStatic<MinecraftClient> client;
+  private static MockedStatic<Minecraft> client;
 
   @BeforeAll
   static void setupOnce() {
-    client = mockStatic(MinecraftClient.class);
+    client = mockStatic(Minecraft.class);
   }
 
   @BeforeEach
   void setup() throws Exception {
-    MinecraftClient instance = mock(MinecraftClient.class);
-    client.when(MinecraftClient::getInstance).thenReturn(instance);
+    Minecraft instance = mock(Minecraft.class);
+    client.when(Minecraft::getInstance).thenReturn(instance);
+    when(instance.isWindowActive()).thenReturn(true);
     Window window = mock(Window.class);
     doReturn(window).when(instance).getWindow();
-    Keyboard keyboard = spy(new Keyboard(instance));
+    KeyboardHandler keyboard = spy(new KeyboardHandler(instance));
     IAnalogKeyboard analogKeyboard = (IAnalogKeyboard) keyboard;
     keyboardListener = (AnalogKeyboardListener) analogKeyboard;
 
     doReturn(true).when(analogKeyboard).usesAnalog();
-    Field keyboardField = MinecraftClient.class.getDeclaredField("keyboard");
+    Field keyboardField = Minecraft.class.getDeclaredField("keyboardHandler");
     keyboardField.setAccessible(true);
-    keyboardField.set(instance, (Keyboard) analogKeyboard);
+    keyboardField.set(instance, (KeyboardHandler) analogKeyboard);
     //? if >=1.21.9 {
-    keyBinding = new KeyBinding("Space", KeyMapper.hidToGlfw(KEY_BINDING), KeyBinding.Category.GAMEPLAY);
+    keyBinding = new KeyMapping("Space", KeyMapper.hidToGlfw(KEY_BINDING), KeyMapping.Category.GAMEPLAY);
     //?} else {
-    /*keyBinding = new KeyBinding("Space", KeyMapper.hidToGlfw(KEY_BINDING), "General");
+    /*keyBinding = new KeyMapping("Space", KeyMapper.hidToGlfw(KEY_BINDING), "General");
     *///?}
     analogKeybinding = (IAnalogKeybinding) keyBinding;
 
     // assume we have a valid analog keyboard
-    assume().that(((IAnalogKeyboard) MinecraftClient.getInstance().keyboard).usesAnalog()).isTrue();
+    assume().that(((IAnalogKeyboard) Minecraft.getInstance().keyboardHandler).usesAnalog()).isTrue();
   }
 
   @AfterEach
@@ -77,12 +79,12 @@ class AnalogKeybindingTest {
 
   @Test
   void testIsNotPressedAtStart() {
-    assertThat(keyBinding.isPressed()).isFalse();
+    assertThat(keyBinding.isDown()).isFalse();
   }
 
   @Test
   void testWasNotPressedAtStart() {
-    assertThat(keyBinding.wasPressed()).isFalse();
+    assertThat(keyBinding.consumeClick()).isFalse();
   }
 
   @Test
@@ -105,31 +107,31 @@ class AnalogKeybindingTest {
   @Test
   void testCorrectKeyChangesPressed() {
     keyboardListener.keyPressed(null, Set.of(new AnalogKeyState(KEY_BINDING, 1.0f)));
-    assertThat(keyBinding.isPressed()).isTrue();
+    assertThat(keyBinding.isDown()).isTrue();
   }
 
   @Test
   void testWasPressedForCorrectKey() {
     keyboardListener.keyPressed(null, Set.of(new AnalogKeyState(KEY_BINDING, 1.0f)));
-    verify(MinecraftClient.getInstance()).execute(any(Runnable.class));
+    verify(Minecraft.getInstance()).execute(any(Runnable.class));
   }
 
   @Test
   void testWasPressedOnlyOnceForCorrectKey() {
     keyboardListener.keyPressed(null, Set.of(new AnalogKeyState(KEY_BINDING, 1.0f)));
-    verify(MinecraftClient.getInstance(), times(1)).execute(any(Runnable.class));
+    verify(Minecraft.getInstance(), times(1)).execute(any(Runnable.class));
   }
 
   @Test
   void testSmallChangeDoesNotPressTwice() {
     keyboardListener.keyPressed(null, Set.of(new AnalogKeyState(KEY_BINDING, LibAnalog.ACTUATION_POINT)));
     keyboardListener.keyPressed(null, Set.of(new AnalogKeyState(KEY_BINDING, 1.0f)));
-    verify(MinecraftClient.getInstance(), times(1)).execute(any(Runnable.class));
+    verify(Minecraft.getInstance(), times(1)).execute(any(Runnable.class));
   }
 
   @Test
   void testActuationPointPressesKey() {
     keyboardListener.keyPressed(null, Set.of(new AnalogKeyState(KEY_BINDING, LibAnalog.ACTUATION_POINT)));
-    verify(MinecraftClient.getInstance(), times(1)).execute(any(Runnable.class));
+    verify(Minecraft.getInstance(), times(1)).execute(any(Runnable.class));
   }
 }

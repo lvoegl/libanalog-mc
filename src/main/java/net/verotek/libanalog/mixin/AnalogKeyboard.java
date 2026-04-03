@@ -1,15 +1,22 @@
 package net.verotek.libanalog.mixin;
 
+import static org.lwjgl.glfw.GLFW.GLFW_PRESS;
+import static org.lwjgl.glfw.GLFW.GLFW_RELEASE;
+import static org.lwjgl.glfw.GLFW.glfwGetKeyScancode;
+
+import com.mojang.blaze3d.platform.InputConstants;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
-import net.minecraft.client.Keyboard;
-import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.KeyboardHandler;
+import net.minecraft.client.Minecraft;
 //? if >=1.21.9 {
-import net.minecraft.client.input.CharInput;
-import net.minecraft.client.input.KeyInput;
-import net.minecraft.client.util.Window;
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.KeyEvent;
+import com.mojang.blaze3d.platform.Window;
 //?}
-import net.minecraft.client.util.InputUtil;
+//? if >=26 {
+import net.minecraft.client.input.PreeditEvent;
+//?}
 import net.verotek.libanalog.LibAnalog;
 import net.verotek.libanalog.api.AnalogKeyStates;
 import net.verotek.libanalog.api.KeyMapper;
@@ -29,79 +36,86 @@ import org.voegl.analogkey4j.AnalogKeyboardManager;
 import org.voegl.analogkey4j.event.AnalogKeyState;
 import org.voegl.analogkey4j.event.AnalogKeyboardListener;
 import org.voegl.analogkey4j.plugins.AnalogKeyboardDevice;
-import static org.lwjgl.glfw.GLFW.GLFW_PRESS;
-import static org.lwjgl.glfw.GLFW.GLFW_RELEASE;
-import static org.lwjgl.glfw.GLFW.GLFW_REPEAT;
-
-import static org.lwjgl.glfw.GLFW.glfwGetKeyScancode;
 
 @Implements(@Interface(iface = IAnalogKeyboard.class, prefix = "libanalog$"))
-@Mixin(Keyboard.class)
+@Mixin(KeyboardHandler.class)
 public abstract class AnalogKeyboard implements AnalogKeyboardListener, IAnalogKeyboard {
 
-  @Final
+  @Final @Shadow private Minecraft minecraft;
+  @Unique private final AnalogKeyboardManager libanalog$manager = new AnalogKeyboardManager();
+  @Unique private AnalogKeyboardDevice libanalog$keyboard;
+
+  //? if >= 26 {
   @Shadow
-  private MinecraftClient client;
-  @Unique
-  private final AnalogKeyboardManager libanalog$manager = new AnalogKeyboardManager();
-  @Unique
-  private AnalogKeyboardDevice libanalog$keyboard;
+  private void preeditCallback(final long handle, final PreeditEvent event) {}
+  //? }
 
   //? if >=1.21.9 {
   @Shadow
-  private void onKey(long window, int action, KeyInput input) {
-  }
+  private void charTyped(long l, CharacterEvent characterEvent) {}
 
   @Shadow
-  private void onChar(long window, CharInput input) {
-  }
+  private void keyPress(long l, int i, KeyEvent keyEvent) {}
   //?} else {
   /*@Shadow
-  public void onKey(long window, int key, int scancode, int action, int modifiers) {
-  }
+  public void keyPress(long window, int key, int scancode, int action, int modifiers) {}
 
   @Shadow
-  private void onChar(long window, int codePoint, int modifiers) {
-  }
+  private void charTyped(long window, int codePoint, int modifiers) {}
   *///?}
 
   @Inject(method = "<init>", at = @At("TAIL"))
-  private void registerKeyboardListener(MinecraftClient client, CallbackInfo ci) {
+  private void registerKeyboardListener(Minecraft client, CallbackInfo ci) {
     libanalog$manager.addListener(this);
-    ClientLifecycleEvents.CLIENT_STOPPING.register(c -> {
-      LibAnalog.LOGGER.info("Shutting down analog keyboard handler");
-      libanalog$manager.stop();
-    });
+    ClientLifecycleEvents.CLIENT_STOPPING.register(
+        c -> {
+          LibAnalog.LOGGER.info("Shutting down analog keyboard handler");
+          libanalog$manager.stop();
+        });
   }
 
   /**
    * @author lvoegl
-   * @reason Sets up analog keyboard manager and falls back to default keyboard if
-   *         unavailable.
+   * @reason Sets up analog keyboard manager and falls back to default keyboard if unavailable.
    */
   @Overwrite
-  public void setup(/*? if >=1.21.9 {*/ Window /*?} else {*/ /*long*//*?}*/ window) {
+  public void setup(/*? if >=1.21.9 {*/ Window /*?} else {*/ /*long *//*?}*/ window) {
     LibAnalog.LOGGER.info("Initializing analog keyboard handler");
     libanalog$manager.start();
 
-    InputUtil.setKeyboardCallbacks(window, (windowx, key, scancode, action, modifiers) -> {
-      if (!usesAnalog()) {
-        // only if no analog keyboard
-        //? if >=1.21.9 {
-        KeyInput keyInput = new KeyInput(key, scancode, modifiers);
-        this.client.execute(() -> this.onKey(windowx, action, keyInput));
-        //?} else {
-        /*this.client.execute(() -> this.onKey(windowx, key, scancode, action, modifiers));
-        *///?}
-      }
-    }, (windowx, codePoint, modifiers) -> {
-      //? if >=1.21.9 {
-      CharInput charInput = new CharInput(codePoint, modifiers);
-      this.client.execute(() -> this.onChar(windowx, charInput));
-      //?} else {
-      /*this.client.execute(() -> this.onChar(windowx, codePoint, modifiers));
-      *///?}
-    });
+    InputConstants.setupKeyboardCallbacks(
+        window,
+        (windowx, key, scancode, action, modifiers) -> {
+          if (!usesAnalog()) {
+            // only if no analog keyboard
+            //? if >=1.21.9 {
+            KeyEvent keyInput = new KeyEvent(key, scancode, modifiers);
+            this.minecraft.execute(() -> this.keyPress(windowx, action, keyInput));
+            //?} else {
+            /*this.minecraft.execute(() -> this.keyPress(windowx, key, scancode, action, modifiers));
+            *///?}
+          }
+        },
+        (windowx, codePoint /*? if <26 {*/ /*, modifiers  *//*?} */) -> {
+          //? if >=1.21.9 {
+          CharacterEvent characterEvent =
+              new CharacterEvent(codePoint /*? if < 26 {*/ /*, modifiers  *//*?} */);
+          this.minecraft.execute(() -> this.charTyped(windowx, characterEvent));
+          //?} else {
+          /*this.minecraft.execute(() -> this.charTyped(windowx, codePoint, modifiers));
+          *///?}
+        } //? if >=26 {
+        ,
+        (window1, preeditSize, preeditPtr, blockCount, blockSizesPtr, focusedBlock, caret) -> {
+          PreeditEvent event =
+              PreeditEvent.createFromCallback(
+                  preeditSize, preeditPtr, blockCount, blockSizesPtr, focusedBlock, caret);
+          this.minecraft.execute(() -> this.preeditCallback(window1, event));
+        },
+        (window1) -> this.minecraft.textInputManager().notifyIMEChanged());
+        //? } else {
+        /*);
+        *///? }
   }
 
   @Intrinsic
@@ -111,17 +125,18 @@ public abstract class AnalogKeyboard implements AnalogKeyboardListener, IAnalogK
 
   @Override
   public void keyPressed(AnalogKeyboardDevice keyboard, Set<AnalogKeyState> states) {
-    if (!MinecraftClient.getInstance().isWindowFocused()) return;
+    if (!Minecraft.getInstance().isWindowActive()) return;
 
     for (AnalogKeyState state : states) {
       int keyCode = KeyMapper.hidToGlfw(state.key());
-      long handle = this.client.getWindow().getHandle();
       //? if >=1.21.9 {
-      KeyInput keyInput = new KeyInput(keyCode, glfwGetKeyScancode(keyCode), 0); // TODO modifiers
-      InputUtil.Key key = InputUtil.fromKeyCode(keyInput);
+      long handle = this.minecraft.getWindow().handle();
+      KeyEvent keyInput = new KeyEvent(keyCode, glfwGetKeyScancode(keyCode), 0); // TODO modifiers
+      InputConstants.Key key = InputConstants.getKey(keyInput);
       //?} else {
-      /*int scancode = glfwGetKeyScancode(keyCode);
-      InputUtil.Key key = InputUtil.fromKeyCode(keyCode, scancode);
+      /*long handle = this.minecraft.getWindow().getWindow();
+      int scancode = glfwGetKeyScancode(keyCode);
+      InputConstants.Key key = InputConstants.getKey(keyCode, scancode);
       *///?}
       boolean wasPressed = AnalogKeyStates.isPressed(key);
       AnalogKeyStates.set(key, state.value());
@@ -129,15 +144,15 @@ public abstract class AnalogKeyboard implements AnalogKeyboardListener, IAnalogK
 
       if (!wasPressed && isPressed) {
         //? if >=1.21.9 {
-        this.client.execute(() -> this.onKey(handle, GLFW_PRESS, keyInput));
+        this.minecraft.execute(() -> this.keyPress(handle, GLFW_PRESS, keyInput));
         //?} else {
-        /*this.client.execute(() -> this.onKey(handle, keyCode, scancode, GLFW_PRESS, 0));
+        /*this.minecraft.execute(() -> this.keyPress(handle, keyCode, scancode, GLFW_PRESS, 0));
         *///?}
       } else if (wasPressed && !isPressed) {
         //? if >=1.21.9 {
-        this.client.execute(() -> this.onKey(handle, GLFW_RELEASE, keyInput));
+        this.minecraft.execute(() -> this.keyPress(handle, GLFW_RELEASE, keyInput));
         //?} else {
-        /*this.client.execute(() -> this.onKey(handle, keyCode, scancode, GLFW_RELEASE, 0));
+        /*this.minecraft.execute(() -> this.keyPress(handle, keyCode, scancode, GLFW_RELEASE, 0));
         *///?}
       }
     }
@@ -152,15 +167,15 @@ public abstract class AnalogKeyboard implements AnalogKeyboardListener, IAnalogK
   public void keyboardAdded(AnalogKeyboardDevice keyboard) {
     // TODO do not always use the first supported keyboard found
     if (this.libanalog$keyboard == null) {
-      LibAnalog.LOGGER.info("Keyboard {} connected", formatVidPid(keyboard.getVendorId(), keyboard.getProductId()));
+      LibAnalog.LOGGER.info(
+          "Keyboard {} connected", formatVidPid(keyboard.getVendorId(), keyboard.getProductId()));
       this.libanalog$keyboard = keyboard;
       keyboard.open();
     }
   }
 
   @Override
-  public void keyboardClosed(AnalogKeyboardDevice keyboard) {
-  }
+  public void keyboardClosed(AnalogKeyboardDevice keyboard) {}
 
   @Override
   public void keyboardError(AnalogKeyboardDevice keyboard, String message) {
@@ -168,13 +183,14 @@ public abstract class AnalogKeyboard implements AnalogKeyboardListener, IAnalogK
   }
 
   @Override
-  public void keyboardOpened(AnalogKeyboardDevice keyboard) {
-  }
+  public void keyboardOpened(AnalogKeyboardDevice keyboard) {}
 
   @Override
   public void keyboardRemoved(AnalogKeyboardDevice keyboard) {
     if (keyboard.equals(this.libanalog$keyboard)) {
-      LibAnalog.LOGGER.info("Keyboard {} disconnected", formatVidPid(keyboard.getVendorId(), keyboard.getProductId()));
+      LibAnalog.LOGGER.info(
+          "Keyboard {} disconnected",
+          formatVidPid(keyboard.getVendorId(), keyboard.getProductId()));
       this.libanalog$keyboard = null;
     }
   }
