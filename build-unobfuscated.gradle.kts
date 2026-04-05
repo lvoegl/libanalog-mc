@@ -45,12 +45,9 @@ dependencies {
 }
 
 tasks.shadowJar {
+    archiveClassifier = ""
     configurations = listOf(project.configurations.shadow.get())
     exclude("com/sun/jna/**")
-}
-
-tasks.jar {
-    archiveClassifier = "slim"
 }
 
 loom {
