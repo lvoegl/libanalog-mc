@@ -111,8 +111,8 @@ publishMods {
         projectId = property("publish.modrinth").toString()
         accessToken = providers.environmentVariable("MODRINTH_TOKEN")
         minecraftVersions.add(minecraft)
-        requires {
-            slug = "fabric-api"
+        if (loader == "fabric") {
+            requires("fabric-api")
         }
     }
 
